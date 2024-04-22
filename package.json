@@ -1,0 +1,8 @@
+{
+    "scripts": {
+        "start": "http-server -a localhost -p 13000"
+    },
+    "dependencies": {
+        "http-server": "^14.1.1"
+    }
+}

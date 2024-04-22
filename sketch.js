@@ -1,73 +1,196 @@
-let grid = [];
-let stack = [];
-let cellWidth = 25;
-let rows, cols;
-let current;
-let slider;
-let visitCounter = 0;
-let totalCells;
+var cellSize = Math.round(27);
+var tookOfStack = false;
+var start;
 
+var grid = [],
+    stack = [],
+    rows,
+    cols,
+    current;
+
+let cellsvisited = 1;
 function setup() {
-    frameRate(100);
+    frameRate(5);
 
-    createCanvas(windowWidth, windowHeight - 20);
+    createCanvas(windowWidth, windowHeight);
 
-    slider = createSlider(1, 1000, 1);
-    slider.style("width", "100px");
+    rows = floor(height / cellSize);
+    cols = floor(width / cellSize);
 
-    rows = floor(height / cellWidth);
-    cols = floor(width / cellWidth);
-    totalCells = rows * cols;
+    colorMode(RGB);
 
+    if (cellSize < 15) cellSize = 15;
+
+    createCanvas(windowWidth, windowHeight);
+
+    buildGrid();
+
+    current =
+        grid[
+            index(
+                floor(random(0, rows - rows / 4)),
+                floor(random(0, cols - cols / 4))
+            )
+        ];
+
+    current.visited = true;
+
+    start = current;
+}
+
+function draw() {
+    if (cellsvisited === rows * cols) frameRate(0);
+
+    background(57, 28, 130);
+
+    for (let i = 0; i < rows * cols; i++) {
+        grid[i].show(cellSize);
+    }
+
+    if (current && !current.visited) {
+        current.visited = true;
+        cellsvisited++;
+        ab = current;
+    }
+
+    let next = current.checkNeighbors();
+
+    if (next) {
+        tookOfStack = false;
+
+        current.highLight();
+        stack.push(current);
+        current.removeWalls(next);
+        current = next;
+    } else if (stack.length > 0) {
+        current.highLight();
+        current = stack.pop();
+        tookOfStack = true;
+    }
+}
+
+function buildGrid() {
     for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
             grid.push(new Cell(col, row));
         }
     }
-
-    current = grid[0];
-    current.visited = true;
-    visitCounter++;
-    current.getNeighbour();
-
-    document.title = "Maze: Progress...";
 }
 
-function draw() {
-    background(0);
+function Cell(x, y) {
+    this.x = x;
+    this.y = y;
 
-    for (let i = 0; i < grid.length; i++) {
-        grid[i].show();
-    }
+    this.walls = {
+        top: true,
+        right: true,
+        bottom: true,
+        left: true,
+    };
 
-    for (let i = 0; i < slider.value(); i++) {
-        let next = current.getNeighbour();
-        if (next) {
-            next.visited = true;
-            visitCounter++;
+    this.visited = false;
+    this.colorValue = this.colorValueMin = 150;
+    this.colorValueMax = 255;
+    this.colorMode = true;
 
-            stack.push(current);
+    this.checkNeighbors = function () {
+        let top = grid[index(this.x, this.y - 1)];
+        let right = grid[index(this.x + 1, this.y)];
+        let bottom = grid[index(this.x, this.y + 1)];
+        let left = grid[index(this.x - 1, this.y)];
 
-            current.removeWalls(next);
+        let neighbors = [];
 
-            current = next;
-        } else if (stack.length > 0) {
-            let found = false;
+        if (top && !top.visited) neighbors.push(top);
+        if (right && !right.visited) neighbors.push(right);
+        if (bottom && !bottom.visited) neighbors.push(bottom);
+        if (left && !left.visited) neighbors.push(left);
 
-            while (!found) {
-                let val = stack.pop();
-                if (val.relpos[0] === 0 && val.relpos[1] === 0) {
-                    found = true;
-                    current = val;
-                } else if (val.getNeighbour()) {
-                    found = true;
-                    current = val;
-                }
-            }
+        var random = floor(Math.random() * neighbors.length);
+        return neighbors[random];
+    };
+
+    this.removeWalls = function (next) {
+        let x = this.x - next.x,
+            y = this.y - next.y;
+
+        if (x === 1) {
+            this.walls.left = false;
+            next.walls.right = false;
+        } else if (x === -1) {
+            next.walls.left = false;
+            this.walls.right = false;
         }
-    }
-    //100 / 10
-    document.title = "Maze: " + floor((visitCounter / totalCells) * 100) + " %";
+
+        if (y === 1) {
+            this.walls.top = false;
+            next.walls.bottom = false;
+        } else if (y === -1) {
+            next.walls.top = false;
+            this.walls.bottom = false;
+        }
+    };
+
+    this.show = function () {
+        if (this.colorMode) {
+            this.colorValue++;
+        } else {
+            this.colorValue--;
+        }
+
+        if (
+            this.colorValue === this.colorValueMin ||
+            this.colorValue === this.colorValueMax
+        ) {
+            this.colorMode = !this.colorMode;
+        }
+
+        stroke(255);
+
+        let y = this.y * cellSize;
+        let x = this.x * cellSize;
+
+        if (this.walls.top && this.visited) {
+            line(x, y, x + cellSize, y);
+        }
+
+        if (this.walls.right && this.visited) {
+            line(x + cellSize, y, x + cellSize, y + cellSize);
+        }
+
+        if (this.walls.bottom && this.visited) {
+            line(x, y + cellSize, x + cellSize, y + cellSize);
+        }
+
+        if (this.walls.left && this.visited) {
+            line(x, y + cellSize, x, y);
+        }
+
+        if (this.visited) {
+            noStroke();
+
+            if (this === start) {
+                fill(0, 0, 255, 20);
+            } else {
+                fill(this.colorValue, 0, this.colorValue, 150);
+            }
+            rect(x, y, cellSize, cellSize);
+        }
+    };
+
+    this.highLight = function () {
+        let x = this.x * cellSize;
+        let y = this.y * cellSize;
+        noStroke();
+
+        if (tookOfStack) {
+            fill("red");
+        } else {
+            fill(50, 205, 50);
+        }
+
+        rect(x, y, cellSize, cellSize);
+    };
 }
 function index(x, y) {
     if (x < 0 || y < 0 || x > cols - 1 || y > rows - 1) {
@@ -75,104 +198,4 @@ function index(x, y) {
     }
 
     return x + y * cols;
-}
-
-class Cell {
-    constructor(x, y) {
-        this.relpos = [x, y];
-        this.x = x * cellWidth;
-        this.y = y * cellWidth;
-        this.walls = [true, true, true, true];
-        this.visited = false;
-
-        this.show = function () {
-            stroke(0);
-            strokeWeight(3);
-            if (this.walls[0]) {
-                //roof
-                line(this.x, this.y, this.x + cellWidth, this.y);
-            }
-            if (this.walls[1]) {
-                //right
-                line(
-                    this.x + cellWidth,
-                    this.y,
-                    this.x + cellWidth,
-                    this.y + cellWidth
-                );
-            }
-            if (this.walls[2]) {
-                //bottom
-                line(
-                    this.x,
-                    this.y + cellWidth,
-                    this.x + cellWidth,
-                    this.y + cellWidth
-                );
-            }
-            if (this.walls[3]) {
-                //left
-                line(this.x, this.y, this.x, this.y + cellWidth);
-            }
-
-            if (this.visited) {
-                if (current == this) {
-                    fill("blue");
-                } else {
-                    fill("violet");
-                }
-                noStroke();
-                rect(this.x, this.y, cellWidth, cellWidth);
-            }
-        };
-    }
-    getNeighbour() {
-        let top = grid[index(this.relpos[0], this.relpos[1] - 1)];
-        let right = grid[index(this.relpos[0] + 1, this.relpos[1])];
-        let bottom = grid[index(this.relpos[0], this.relpos[1] + 1)];
-        let left = grid[index(this.relpos[0] - 1, this.relpos[1])];
-
-        let neightbours = [];
-
-        if (top && !top.visited) {
-            neightbours.push(top);
-        }
-        if (right && !right.visited) {
-            neightbours.push(right);
-        }
-        if (bottom && !bottom.visited) {
-            neightbours.push(bottom);
-        }
-        if (left && !left.visited) {
-            neightbours.push(left);
-        }
-
-        if (neightbours.length > 0) {
-            let randomIndex = floor(random(0, neightbours.length));
-            return neightbours[randomIndex];
-        } else {
-            return undefined;
-        }
-    }
-    removeWalls(next) {
-        let xMovement = this.relpos[0] - next.relpos[0];
-        let yMovement = this.relpos[1] - next.relpos[1];
-
-        //moved on x
-        if (xMovement === 1) {
-            this.walls[3] = false;
-            next.walls[1] = false;
-        } else if (xMovement === -1) {
-            this.walls[1] = false;
-            next.walls[3] = false;
-        }
-        //moved on y
-        if (yMovement === 1) {
-            this.walls[0] = false;
-            next.walls[2] = false;
-        } else if (yMovement === -1) {
-            this.walls[2] = false;
-            next.walls[0] = false;
-        }
-    }
 }
