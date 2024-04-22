@@ -1,4 +1,4 @@
-var cellSize = Math.round(27);
+var cellSize = 24;
 var tookOfStack = false;
 var start;
 
@@ -56,12 +56,11 @@ function draw() {
     let next = current.checkNeighbors();
 
     if (next) {
-        tookOfStack = false;
-
         current.highLight();
         stack.push(current);
         current.removeWalls(next);
         current = next;
+        tookOfStack = false;
     } else if (stack.length > 0) {
         current.highLight();
         current = stack.pop();
@@ -147,8 +146,8 @@ function Cell(x, y) {
 
         stroke(255);
 
-        let y = this.y * cellSize;
-        let x = this.x * cellSize;
+        let y = this.y * cellSize + 2;
+        let x = this.x * cellSize + 2;
 
         if (this.walls.top && this.visited) {
             line(x, y, x + cellSize, y);
@@ -179,8 +178,8 @@ function Cell(x, y) {
     };
 
     this.highLight = function () {
-        let x = this.x * cellSize;
-        let y = this.y * cellSize;
+        let x = this.x * cellSize + 2;
+        let y = this.y * cellSize + 2;
         noStroke();
 
         if (tookOfStack) {
